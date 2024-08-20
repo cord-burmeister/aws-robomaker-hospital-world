@@ -1,41 +1,70 @@
+# /*******************************************************************************
+# * Copyright 2019 ROBOTIS CO., LTD.
+# *
+# * Licensed under the Apache License, Version 2.0 (the "License");
+# * you may not use this file except in compliance with the License.
+# * You may obtain a copy of the License at
+# *
+# *     http://www.apache.org/licenses/LICENSE-2.0
+# *
+# * Unless required by applicable law or agreed to in writing, software
+# * distributed under the License is distributed on an "AS IS" BASIS,
+# * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# * See the License for the specific language governing permissions and
+# * limitations under the License.
+# *******************************************************************************/
+
+# /* Author: Darby Lim */
+
 import os
-import sys
 
 import launch
-from launch.conditions import IfCondition
-from launch.substitutions import PythonExpression
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
 from ament_index_python.packages import get_package_share_directory
+from launch.substitutions import (
+    Command,
+    PythonExpression,
+    FindExecutable,
+    PathJoinSubstitution,
+    LaunchConfiguration,
+    TextSubstitution,
+)
 
 
 def generate_launch_description():
-    world_file_name = "hospital.world"
-    world = os.path.join(get_package_share_directory('aws_robomaker_hospital_world'), 'worlds', world_file_name)
+    world_file_name = 'small_house.world'
+    package_dir = get_package_share_directory('aws_robomaker_hospital_world')
+    pkg_ros_gz_sim = get_package_share_directory('ros_gz_sim')
 
-    gazebo_ros = get_package_share_directory('gazebo_ros')
-    gazebo_client = launch.actions.IncludeLaunchDescription(
-	launch.launch_description_sources.PythonLaunchDescriptionSource(
-            os.path.join(gazebo_ros, 'launch', 'gzclient.launch.py')),
-        condition=launch.conditions.IfCondition(launch.substitutions.LaunchConfiguration('gui'))
-     )
-    gazebo_server = launch.actions.IncludeLaunchDescription(
+  # Setup to launch the simulator and Gazebo world
+    gz_sim = launch.actions.IncludeLaunchDescription(
         launch.launch_description_sources.PythonLaunchDescriptionSource(
-            os.path.join(gazebo_ros, 'launch', 'gzserver.launch.py'))
+            os.path.join(pkg_ros_gz_sim, 'launch', 'gz_sim.launch.py')),
+            launch_arguments={'gz_args': PathJoinSubstitution([
+            package_dir,
+            'worlds',
+            'hospital.world'
+        ])}.items(),
     )
-
-
-    ld = launch.LaunchDescription([
-        launch.actions.DeclareLaunchArgument(
+    return LaunchDescription([
+        DeclareLaunchArgument(
           'world',
-          default_value=[world, ''],
+          default_value=[os.path.join(package_dir, 'worlds', world_file_name), ''],
           description='SDF world file'),
-        launch.actions.DeclareLaunchArgument(
+        DeclareLaunchArgument(
             name='gui',
             default_value='false'
         ),
-        gazebo_server,
-        gazebo_client
+        DeclareLaunchArgument(
+            name='use_sim_time',
+            default_value='true'
+        ),
+        DeclareLaunchArgument('state',
+            default_value='true',
+            description='Set "true" to load "libgazebo_ros_state.so"'),
+        gz_sim,
     ])
-    return ld
 
 
 if __name__ == '__main__':
